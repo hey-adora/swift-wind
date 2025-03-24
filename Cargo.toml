@@ -1,6 +1,7 @@
+
 [workspace]
 resolver = "2"
-members = ["client-desktop"]
+members = ["swift-wind"]
 
 [workspace.dependencies]
 freya = "0.2.2"

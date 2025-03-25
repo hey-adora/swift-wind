@@ -8,3 +8,5 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 freya ={ workspace = true}
+matrix-sdk = {workspace = true}
+ruma = {workspace = true}

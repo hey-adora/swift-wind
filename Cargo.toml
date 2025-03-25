@@ -4,7 +4,13 @@ resolver = "2"
 members = ["swift-wind"]
 
 [workspace.dependencies]
-freya = "0.2.2"
-dioxus = { version = "0.6.3", features = ["macro", "hooks"], default-features = false }
-matrix-sdk = {version = "0.10.0", features = ["e2e-encryption","markdown"]}
-ruma = { version = "0.12.1", features = ["client-api-c","client-api"]}
+freya = "0.3.0-rc.3 "
+dioxus = { version = "0.6.3", features = [
+    "macro",
+    "hooks",
+], default-features = false }
+dioxus-router = { version = "0.6.3", default-features = false }
+matrix-sdk = { version = "0.10.0", features = ["e2e-encryption", "markdown"] }
+ruma = { version = "0.12.1", features = ["client-api-c", "client-api"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }

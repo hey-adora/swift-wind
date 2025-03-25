@@ -2,6 +2,9 @@
 name = "swift-wind"
 version = "0.1.0"
 edition = "2024"
+description = "ambitious matrix client"
+homepage = "https://github.com/hey-adora/swift-wind"
+license = "GPL-3.0-or-later"
 
 [dependencies]
 freya ={ workspace = true}

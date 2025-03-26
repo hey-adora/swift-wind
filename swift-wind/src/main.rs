@@ -24,6 +24,18 @@ pub enum Route {
     #[route("/register")]
     Register,
 }
+
+pub static CLIENT: GlobalSignal<MatrixClientState> = Global::new(MatrixClientState::default);
+
+#[derive(Debug, Default, Clone)]
+pub enum MatrixClientState {
+    #[default]
+    Disconnected,
+    Connecting,
+    Connected(Client),
+    Error(String),
+}
+
 fn main() {
     tracing_subscriber::fmt()
         .event_format(

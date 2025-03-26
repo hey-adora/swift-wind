@@ -1,46 +1,5 @@
 use freya::dioxus_core;
 use freya::prelude::*;
-use matrix_sdk::Client;
-use matrix_sdk::HttpError;
-use matrix_sdk::RumaApiError;
-use matrix_sdk::reqwest::Url;
-use ruma::api::client::account::register::RegistrationKind;
-use ruma::api::client::uiaa::AuthType;
-use ruma::api::client::uiaa::Dummy;
-use ruma::api::error::FromHttpResponseError;
-
-/// A very broad overarching state of the current page
-/// Meant for switching two other components
-#[derive(Default)]
-enum GeneralLoginState {
-    #[default]
-    Register,
-    Login,
-}
-
-#[derive(Default, Clone)]
-enum RegisterState {
-    #[default]
-    EnteringData,
-    ExtraAuthRequired {
-        recaptcha: bool,
-        shared_token: bool,
-        email: bool,
-        terms: bool,
-        session_token: Option<String>,
-    },
-    RegisterComplete,
-}
-
-#[derive(Default)]
-enum LoginState {
-    #[default]
-    EnteringData,
-    ExtraAuthRequired {
-        recaptcha: bool,
-    },
-    LoginComplete,
-}
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd)]
 pub struct LoginForm {
@@ -50,8 +9,7 @@ pub struct LoginForm {
 
 #[component]
 pub fn Login() -> Element {
-    let mut login_state = use_signal(|| GeneralLoginState::default());
-    let mut form = use_signal(|| LoginForm::default());
+    let mut form = use_signal(LoginForm::default);
 
     rsx! {
         rect {

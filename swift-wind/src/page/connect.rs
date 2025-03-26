@@ -1,12 +1,6 @@
-use dioxus_router::{hooks::use_route, prelude::navigator};
+use crate::{CLIENT, MatrixClientState, hook::connect::use_matrix_connect};
+use dioxus_router::prelude::navigator;
 use freya::prelude::*;
-use matrix_sdk::{Client, reqwest::Url};
-use tracing::trace;
-
-use crate::{
-    Route,
-    hook::connect::{CLIENT, MatrixClientState, use_matrix_connect},
-};
 
 // "http://127.0.0.1:8448"
 
@@ -28,18 +22,9 @@ pub struct ConnectFormError {
     url: String,
 }
 
-// #[derive(Debug, Default, Clone, PartialEq, PartialOrd)]
-// pub enum ConnectionState {
-//     #[default]
-//     Disconnected,
-//     Connected,
-//     Error(String),
-// }
-
 #[component]
 pub fn Connect() -> Element {
-    let mut form = use_signal(|| ConnectForm::default());
-    let router: Route = use_route();
+    let mut form = use_signal(ConnectForm::default);
     let navigator = navigator();
 
     // let mut form_errors = use_signal(|| ConnectFormError::default());
@@ -50,7 +35,6 @@ pub fn Connect() -> Element {
 
     let on_connect = move |_| {
         let url = form().url;
-        trace!("connecting to: {url}");
         run_matrix_connect(url);
     };
 

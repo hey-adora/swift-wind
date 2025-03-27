@@ -32,7 +32,12 @@ where
                     return;
                 }
             };
-            let client = Client::new(url).await.unwrap();
+            let client = Client::builder()
+                .homeserver_url(url)
+                .handle_refresh_tokens()
+                .build()
+                .await
+                .unwrap();
             let version = client.server_versions().await;
             let version = match version {
                 Ok(v) => v,

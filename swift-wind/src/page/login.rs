@@ -1,6 +1,9 @@
 use freya::dioxus_core;
 use freya::prelude::*;
 
+use crate::hook::CommonUserAuthData;
+use crate::hook::login::use_matrix_login;
+
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd)]
 pub struct LoginForm {
     username: String,
@@ -10,6 +13,16 @@ pub struct LoginForm {
 #[component]
 pub fn Login() -> Element {
     let mut form = use_signal(LoginForm::default);
+    let (error_string, mut run_matrix_login, state_machine) = use_matrix_login(move || {});
+
+    let on_login = move |_| {
+        let auth_data = CommonUserAuthData {
+            username: form().username,
+            password: form().password,
+            session_id: None,
+        };
+        run_matrix_login(auth_data);
+    };
 
     rsx! {
         rect {
@@ -39,6 +52,7 @@ pub fn Login() -> Element {
                 Input {
                     value: form().password,
                     placeholder: "password",
+                    mode: InputMode::Hidden('*'),
                     onchange: move |txt| {
                         form.write().password = txt;
                     }
@@ -50,6 +64,7 @@ pub fn Login() -> Element {
                     main_align: "space-between",
 
                     Button {
+                        onclick: on_login,
                         label {
                             "Login"
                         }
@@ -63,6 +78,10 @@ pub fn Login() -> Element {
                         }
                     }
                 }
+            }
+            label {
+                color: "red",
+                "{error_string}"
             }
         }
     }

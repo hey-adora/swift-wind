@@ -2,14 +2,12 @@ mod components;
 mod hook;
 mod page;
 
-use std::sync::Arc;
-
 // use dioxus::prelude::*;
 use crate::page::{connect::Connect, login::Login, register::Register};
-use dioxus_router::prelude::{Outlet, Routable, Router, RouterConfig};
+use dioxus_router::prelude::{Routable, Router};
 use freya::prelude::*;
 use matrix_sdk::Client;
-use tracing::{error, info, trace};
+use tracing::info;
 
 #[derive(Debug, Routable, Clone, PartialEq)]
 #[rustfmt::skip]

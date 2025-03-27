@@ -7,19 +7,13 @@ use ruma::{
 };
 use tracing::error;
 
-use crate::hook::submit_additional_auth::*;
+use crate::hook::{CommonUserAuthData, submit_additional_auth::*};
 
-#[derive(Debug)]
 pub enum AuthenticationState {
-    Authorized {
-        access_token: Option<String>,
-        refresh_token: Option<String>,
-        device_id: Option<OwnedDeviceId>,
-        user_id: OwnedUserId,
-    },
+    Authorized,
     AdditionalAuthRequired {
         chosen_flow: VecDeque<AuthType>,
-        session_id: Option<String>,
+        common_user_data: CommonUserAuthData,
     },
 }
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd)]
@@ -30,56 +24,40 @@ struct RegisterTokenForm {
 // This component should collect data for authorization and display status,
 // the hook should send the data to the server and wait for result
 #[component]
-pub fn additional_auth_handler(mut state: Signal<Option<AuthenticationState>>) -> Element {
+pub fn additional_auth_handler(
+    mut state: Signal<Option<AuthenticationState>>,
+    additional_auth_type: AdditionalAuthType,
+) -> Element {
     //Gonna need a lot more forms
     let mut token_form = use_signal(RegisterTokenForm::default);
 
-    let (error_string, mut run_auth) = use_matrix_additional_auth(
-        move |auth_res| match auth_res {
-            //Go to next stage of auth, force update by popping auth type from flow
-            HookAuthResult::NextStage => {
-                if let AuthenticationState::AdditionalAuthRequired {
-                    chosen_flow,
-                    session_id: _,
-                } = state.write().as_mut().unwrap()
-                {
-                    if chosen_flow.pop_front().is_none() {
-                        error!(
-                            "No more authentication flow to complete but server still request additional auth"
-                        );
-                    }
+    let (error_string, mut run_auth) = use_matrix_additional_auth(move |auth_res| match auth_res {
+        //Go to next stage of auth, force update by popping auth type from flow
+        HookAuthResult::NextStage => {
+            if let AuthenticationState::AdditionalAuthRequired {
+                chosen_flow,
+                common_user_data: _,
+            } = state.write().as_mut().unwrap()
+            {
+                if chosen_flow.pop_front().is_none() {
+                    error!(
+                        "No more authentication flow to complete but server still request additional auth"
+                    );
                 }
             }
-            HookAuthResult::AuthFinished {
-                access_token,
-                refresh_token,
-                device_id,
-                user_id,
-            } => {
-                let new_state = AuthenticationState::Authorized {
-                    access_token,
-                    refresh_token,
-                    device_id,
-                    user_id,
-                };
-                state.write().replace(new_state);
-            }
-        },
-        AdditionalAuthType::Register,
-    );
+        }
+        HookAuthResult::AuthFinished => {
+            state.write().replace(AuthenticationState::Authorized);
+        }
+    });
 
     match state.read().as_ref().unwrap() {
-        AuthenticationState::Authorized {
-            access_token,
-            refresh_token,
-            device_id,
-            user_id,
-        } => {
+        AuthenticationState::Authorized => {
             rsx!()
         }
         AuthenticationState::AdditionalAuthRequired {
             chosen_flow,
-            session_id,
+            common_user_data,
         } => {
             // Depending on the first element choose what should be displayed
             // Then, whether through automatic or form submission give the hook the authorization data
@@ -99,8 +77,8 @@ pub fn additional_auth_handler(mut state: Signal<Option<AuthenticationState>>) -
                 AuthType::Sso => todo!(),
                 AuthType::Dummy => {
                     let mut dummy = Dummy::new();
-                    dummy.session = session_id.clone();
-                    run_auth(AuthData::Dummy(dummy));
+                    dummy.session = common_user_data.session_id.clone();
+                    run_auth(AuthData::Dummy(dummy), additional_auth_type);
                     rsx! {
                         //Probably can just remove this
                         label { "Attempting authentication" }

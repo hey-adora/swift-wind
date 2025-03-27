@@ -2,7 +2,6 @@ use freya::prelude::*;
 use matrix_sdk::HttpError;
 use matrix_sdk::RumaApiError;
 
-use ruma::api::client::account::register::RegistrationKind;
 use ruma::api::client::uiaa::AuthType;
 use ruma::api::error::FromHttpResponseError;
 use std::collections::VecDeque;
@@ -16,7 +15,7 @@ use crate::components::additional_authorization::AuthenticationState;
 
 use super::CommonUserAuthData;
 
-pub fn use_matrix_register<F>(
+pub fn use_matrix_login<F>(
     callback: F,
 ) -> (
     Signal<String>,
@@ -32,24 +31,20 @@ where
 
     let register = move |mut auth_data: CommonUserAuthData| {
         let MatrixClientState::Connected(client) = CLIENT() else {
-            warn!("trying to register before connected");
+            warn!("trying to login before connected");
             *error_string.write() =
                 "Client has not connected to server, how are you here?".to_string();
             return;
         };
         let mut callback = callback.clone();
         spawn(async move {
-            let mut register_request = ruma::api::client::account::register::v3::Request::new();
-            register_request.password = Some(auth_data.password.clone());
-            register_request.username = Some(auth_data.username.clone());
-            register_request.refresh_token = true;
-            register_request.kind = RegistrationKind::User;
+            trace!("Sending inital login request");
+            let resp = client
+                .matrix_auth()
+                .login_username(&auth_data.username, &auth_data.password)
+                .request_refresh_token()
+                .await;
 
-            trace!("Sending inital register request");
-            let resp = client.matrix_auth().register(register_request).await;
-
-            //Holy error! This is what we should expect, effectively means that the user needs to do another step of auth,
-            //like a recaptcha, shared token, or read terms and conditions
             if let Err(matrix_sdk::Error::Http(HttpError::Api(FromHttpResponseError::Server(
                 RumaApiError::Uiaa(info),
             )))) = resp
@@ -73,17 +68,17 @@ where
 
                 auth_data.session_id = info.session;
 
-                trace!("Register chose auth flow: {:#?}", chosen_flow);
+                trace!("Login chose auth flow: {:#?}", chosen_flow);
                 *returned_state_machine.write() =
                     Some(AuthenticationState::AdditionalAuthRequired {
                         chosen_flow,
                         common_user_data: auth_data,
                     });
             } else if resp.is_ok() {
-                trace!("Inital register auth got accepted");
+                trace!("Inital login got accepted");
                 *returned_state_machine.write() = Some(AuthenticationState::Authorized);
             } else if let Err(err) = resp {
-                error!("Inital register got unexpected api error: {err}");
+                error!("Inital login got unexpected api error: {err}");
                 *error_string.write() = err.to_string();
             }
 

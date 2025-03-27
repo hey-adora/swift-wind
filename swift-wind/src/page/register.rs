@@ -5,7 +5,9 @@ use tracing::trace;
 
 use crate::components::additional_authorization::AuthenticationState;
 use crate::components::additional_authorization::additional_auth_handler;
+use crate::hook::CommonUserAuthData;
 use crate::hook::register::use_matrix_register;
+use crate::hook::submit_additional_auth::AdditionalAuthType;
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd)]
 pub struct LoginForm {
@@ -21,9 +23,12 @@ pub fn Register() -> Element {
     let (error_string, mut run_matrix_register, state_machine) = use_matrix_register(move || {});
 
     let on_register = move |_| {
-        let username = form().username;
-        let password = form().password;
-        run_matrix_register(username, password);
+        let auth_data = CommonUserAuthData {
+            username: form().username,
+            password: form().password,
+            session_id: None,
+        };
+        run_matrix_register(auth_data);
     };
 
     rsx! {
@@ -34,7 +39,15 @@ pub fn Register() -> Element {
             cross_align: "center",
 
             if let Some(auth_state) = state_machine.read().as_ref() {
-                additional_auth_handler { state: state_machine }
+
+                match auth_state{
+                    AuthenticationState::Authorized { .. } => {
+                        rsx!{label { "TODO: Auth Complete" }}
+                    },
+                    AuthenticationState::AdditionalAuthRequired { chosen_flow:_, common_user_data } => {
+                        rsx!{additional_auth_handler { state: state_machine, additional_auth_type: AdditionalAuthType::Register(common_user_data.clone()) }}
+                    },
+                }
             }
             else{
                 rect {
@@ -58,6 +71,7 @@ pub fn Register() -> Element {
                     Input {
                         value: form().password,
                         placeholder: "password",
+                        mode: InputMode::Hidden('*'),
                         onchange: move |txt| {
                             form.write().password = txt;
                         }
@@ -85,6 +99,7 @@ pub fn Register() -> Element {
                     }
                 }
                 label {
+                    color: "red",
                     "{error_string}"
                 }
             }

@@ -1,8 +1,11 @@
 use freya::dioxus_core;
 use freya::prelude::*;
 
+use crate::components::additional_authorization::AuthenticationState;
+use crate::components::additional_authorization::additional_auth_handler;
 use crate::hook::CommonUserAuthData;
 use crate::hook::login::use_matrix_login;
+use crate::hook::submit_additional_auth::AdditionalAuthType;
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd)]
 pub struct LoginForm {
@@ -30,6 +33,19 @@ pub fn Login() -> Element {
             width: "100%",
             main_align: "center",
             cross_align: "center",
+
+            if let Some(auth_state) = state_machine.read().as_ref() {
+
+                match auth_state{
+                    AuthenticationState::Authorized { .. } => {
+                        rsx!{label { "TODO: Auth Complete" }}
+                    },
+                    AuthenticationState::AdditionalAuthRequired { chosen_flow:_, common_user_data } => {
+                        rsx!{additional_auth_handler { state: state_machine, additional_auth_type: AdditionalAuthType::Login(common_user_data.clone()) }}
+                    },
+                }
+            }
+            else{
 
             rect {
                 content: "flex",
@@ -84,5 +100,6 @@ pub fn Login() -> Element {
                 "{error_string}"
             }
         }
+    }
     }
 }

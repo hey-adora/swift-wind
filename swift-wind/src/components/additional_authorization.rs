@@ -1,11 +1,11 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, sync::Arc};
 
 use freya::prelude::*;
 use ruma::{
     OwnedDeviceId, OwnedUserId,
-    api::client::uiaa::{AuthData, AuthType, Dummy},
+    api::client::uiaa::{AuthData, AuthType, Dummy, ReCaptcha, RegistrationToken},
 };
-use tracing::error;
+use tracing::{error, info};
 
 use crate::hook::{CommonUserAuthData, submit_additional_auth::*};
 
@@ -51,55 +51,70 @@ pub fn additional_auth_handler(
         }
     });
 
-    match state.read().as_ref().unwrap() {
-        AuthenticationState::Authorized => {
-            rsx!()
-        }
-        AuthenticationState::AdditionalAuthRequired {
-            chosen_flow,
-            common_user_data,
-        } => {
-            // Depending on the first element choose what should be displayed
-            // Then, whether through automatic or form submission give the hook the authorization data
-            let current_auth_step = chosen_flow.front().unwrap();
+    rsx! {
+        match state.read().as_ref().unwrap() {
+            AuthenticationState::Authorized => {
+                rsx! {label { "Authentication completed, please wait..." }}
+            }
+            AuthenticationState::AdditionalAuthRequired {
+                chosen_flow,
+                common_user_data,
+            } => {
+                // Depending on the first element choose what should be displayed
+                // Then, whether through automatic or form submission give the hook the authorization data
+                let current_auth_step = chosen_flow.front().unwrap();
+                let common_user_data = common_user_data.clone();
 
-            match current_auth_step {
-                AuthType::ReCaptcha => {
-                    rsx! {
-                        //Probably can just remove this
-                        label { "Opening recaptcha in external browser" }
-                        //TODO: Open recaptcha in external browser
-                        Loader{}
+                match current_auth_step {
+                    AuthType::ReCaptcha => todo!(),
+                    AuthType::EmailIdentity => todo!(),
+                    AuthType::Msisdn => todo!(),
+                    AuthType::Sso => todo!(),
+                    AuthType::Dummy => {
+                        let mut dummy = Dummy::new();
+                        dummy.session = common_user_data.session_id.clone();
+                        run_auth(AuthData::Dummy(dummy), additional_auth_type);
+                        rsx! {
+                            //Probably can just remove this
+                            label { "Attempting authentication" }
+                            Loader{}
+                        }
                     }
-                }
-                AuthType::EmailIdentity => todo!(),
-                AuthType::Msisdn => todo!(),
-                AuthType::Sso => todo!(),
-                AuthType::Dummy => {
-                    let mut dummy = Dummy::new();
-                    dummy.session = common_user_data.session_id.clone();
-                    run_auth(AuthData::Dummy(dummy), additional_auth_type);
-                    rsx! {
-                        //Probably can just remove this
-                        label { "Attempting authentication" }
-                        Loader{}
-                    }
-                }
-                AuthType::RegistrationToken => {
-                    rsx! {
-                        label { "Enter your preshared authentication token" }
-                        Input {
-                            placeholder: "Token",
-                            value: token_form().token,
-                            onchange: move|txt|{
-                                token_form.write().token = txt
+                    AuthType::RegistrationToken => {
+                        let send_registration_token = move |_| {
+                            let mut token = RegistrationToken::new(token_form().token);
+                            token.session = common_user_data.session_id.clone();
+                            run_auth(
+                                AuthData::RegistrationToken(token),
+                                additional_auth_type.clone(),
+                            );
+                        };
+
+                        rsx! {
+                            label { "Enter your Registration Token" }
+                            Input {
+                                placeholder: "Token",
+                                value: token_form().token,
+                                onchange: move|txt|{
+                                    token_form.write().token = txt
+                                }
+                            }
+                            Button {
+                                onclick: send_registration_token,
+                                label {
+                                    "Submit"
+                                }
                             }
                         }
                     }
+                    AuthType::Terms => todo!(),
+                    _ => todo!(),
                 }
-                AuthType::Terms => todo!(),
-                _ => todo!(),
             }
+        }
+        label {
+            color: "red",
+            "{error_string}"
         }
     }
 }

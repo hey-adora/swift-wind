@@ -1,17 +1,12 @@
-use std::{rc::Rc, sync::Arc};
-
 use freya::prelude::*;
 use matrix_sdk::reqwest::Url;
-use ruma::{
-    UserId,
-    events::room::message::{LimitType, OriginalSyncRoomMessageEvent, ServerNoticeType},
-};
+use ruma::events::room::message::{LimitType, OriginalSyncRoomMessageEvent, ServerNoticeType};
 use tracing::{info, warn};
 
 use crate::{CLIENT, MatrixClientState};
 
 #[component]
-pub fn room_message(evt: OriginalSyncRoomMessageEvent) -> Element {
+pub fn RoomMessage(evt: OriginalSyncRoomMessageEvent) -> Element {
     let user_id = evt.sender.clone();
 
     //TODO: Replace this with a caching system so we dont have to hammer the server, can also act as a way to

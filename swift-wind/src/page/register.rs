@@ -3,8 +3,8 @@ use freya::dioxus_core;
 use freya::prelude::*;
 use tracing::trace;
 
+use crate::components::additional_authorization::AdditonalAuthHandler;
 use crate::components::additional_authorization::AuthenticationState;
-use crate::components::additional_authorization::additional_auth_handler;
 use crate::hook::CommonUserAuthData;
 use crate::hook::register::use_matrix_register;
 use crate::hook::submit_additional_auth::AdditionalAuthType;
@@ -42,10 +42,11 @@ pub fn Register() -> Element {
 
                 match auth_state{
                     AuthenticationState::Authorized { .. } => {
-                        rsx!{label { "TODO: Auth Complete" }}
+                        navigator.push("main_interface");
+                        rsx!{label { "Account created, loading main interface" }}
                     },
                     AuthenticationState::AdditionalAuthRequired { chosen_flow:_, common_user_data } => {
-                        rsx!{additional_auth_handler { state: state_machine, additional_auth_type: AdditionalAuthType::Register(common_user_data.clone()) }}
+                        rsx!{AdditonalAuthHandler { state: state_machine, additional_auth_type: AdditionalAuthType::Register(common_user_data.clone()) }}
                     },
                 }
             }

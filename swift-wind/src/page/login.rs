@@ -1,8 +1,9 @@
+use dioxus_router::prelude::navigator;
 use freya::dioxus_core;
 use freya::prelude::*;
 
+use crate::components::additional_authorization::AdditonalAuthHandler;
 use crate::components::additional_authorization::AuthenticationState;
-use crate::components::additional_authorization::additional_auth_handler;
 use crate::hook::CommonUserAuthData;
 use crate::hook::login::use_matrix_login;
 use crate::hook::submit_additional_auth::AdditionalAuthType;
@@ -16,6 +17,8 @@ pub struct LoginForm {
 #[component]
 pub fn Login() -> Element {
     let mut form = use_signal(LoginForm::default);
+    let navigator = navigator();
+
     let (error_string, mut run_matrix_login, state_machine) = use_matrix_login(move || {});
 
     let on_login = move |_| {
@@ -38,10 +41,11 @@ pub fn Login() -> Element {
 
                 match auth_state{
                     AuthenticationState::Authorized { .. } => {
-                        rsx!{label { "TODO: Auth Complete" }}
+                        navigator.push("main_interface");
+                        rsx!{label { "Loading main interface..."}}
                     },
                     AuthenticationState::AdditionalAuthRequired { chosen_flow:_, common_user_data } => {
-                        rsx!{additional_auth_handler { state: state_machine, additional_auth_type: AdditionalAuthType::Login(common_user_data.clone()) }}
+                        rsx!{AdditonalAuthHandler { state: state_machine, additional_auth_type: AdditionalAuthType::Login(common_user_data.clone()) }}
                     },
                 }
             }

@@ -3,10 +3,14 @@ mod hook;
 mod page;
 
 // use dioxus::prelude::*;
-use crate::page::{connect::Connect, login::Login, register::Register};
+use crate::page::{
+    connect::Connect, login::Login, main_interface::MainInterface, register::Register,
+    settings::Settings,
+};
 use dioxus_router::prelude::{Routable, Router};
 use freya::prelude::*;
 use matrix_sdk::Client;
+use ruma::RoomId;
 use tracing::info;
 
 #[derive(Debug, Routable, Clone, PartialEq)]
@@ -21,9 +25,22 @@ pub enum Route {
 
     #[route("/register")]
     Register,
+
+    // Maybe have a parameter for which space to display?  
+    // like /main_interface/SPACEID/ROOMID
+    // Probably want to "collapse" all sub-spaces and rooms within a space into one flat structure to make this work
+    #[route("/main_interface")]
+    MainInterface,
+
+    #[route("/settings")]
+    Settings,
 }
 
 pub static CLIENT: GlobalSignal<MatrixClientState> = Global::new(MatrixClientState::default);
+
+//These two are mainly used for the navigation and router
+pub static CURRENT_SPACE: GlobalSignal<Option<String>> = Global::new(Option::default);
+pub static CURRENT_ROOM: GlobalSignal<Option<String>> = Global::new(Option::default);
 
 #[derive(Debug, Default, Clone)]
 pub enum MatrixClientState {

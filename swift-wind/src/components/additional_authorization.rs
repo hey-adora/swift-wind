@@ -1,11 +1,8 @@
-use std::{collections::VecDeque, sync::Arc};
+use std::collections::VecDeque;
 
 use freya::prelude::*;
-use ruma::{
-    OwnedDeviceId, OwnedUserId,
-    api::client::uiaa::{AuthData, AuthType, Dummy, ReCaptcha, RegistrationToken},
-};
-use tracing::{error, info};
+use ruma::api::client::uiaa::{AuthData, AuthType, Dummy, RegistrationToken};
+use tracing::error;
 
 use crate::hook::{CommonUserAuthData, submit_additional_auth::*};
 
@@ -24,7 +21,7 @@ struct RegisterTokenForm {
 // This component should collect data for authorization and display status,
 // the hook should send the data to the server and wait for result
 #[component]
-pub fn additional_auth_handler(
+pub fn AdditonalAuthHandler(
     mut state: Signal<Option<AuthenticationState>>,
     additional_auth_type: AdditionalAuthType,
 ) -> Element {

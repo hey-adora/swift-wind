@@ -29,6 +29,10 @@ where
     let mut returned_state_machine: Signal<Option<AuthenticationState>> =
         use_signal(|| Option::None);
 
+    use_drop(|| {
+        trace!("yo, yo dropped this");
+    });
+
     let register = move |mut auth_data: CommonUserAuthData| {
         let MatrixClientState::Connected(client) = CLIENT() else {
             warn!("trying to login before connected");

@@ -17,14 +17,20 @@ use tracing::info;
 #[rustfmt::skip]
 #[allow(clippy::empty_line_after_outer_attr)]
 pub enum Route {
-    #[route("/")]
-    Connect,
+    #[layout(Connect)] 
 
-    #[route("/login")]
-    Login,
+        #[route("/")]
+        Login,
 
-    #[route("/register")]
-    Register,
+        #[route("/register")]
+        Register,
+
+    #[end_layout]
+
+    // #[route("/login")]
+    // Login,
+
+    
 
     // Maybe have a parameter for which space to display?  
     // like /main_interface/SPACEID/ROOMID

@@ -6,6 +6,7 @@ use ruma::api::client::account::register::RegistrationKind;
 use ruma::api::client::uiaa::AuthType;
 use ruma::api::error::FromHttpResponseError;
 use std::collections::VecDeque;
+use tracing::debug;
 use tracing::error;
 use tracing::trace;
 use tracing::warn;
@@ -40,20 +41,25 @@ where
         let mut callback = callback.clone();
         spawn(async move {
             let mut register_request = ruma::api::client::account::register::v3::Request::new();
-            register_request.password = Some(auth_data.password.clone());
-            register_request.username = Some(auth_data.username.clone());
-            register_request.refresh_token = true;
-            register_request.kind = RegistrationKind::User;
+            register_request.initial_device_display_name =
+                Some("app.element.io: Firefox on Linux".to_string());
+            // register_request.password = Some(auth_data.password.clone());
+            // register_request.username = Some(auth_data.username.clone());
+            // register_request.refresh_token = true;
+            // register_request.kind = RegistrationKind::User;
 
             trace!("Sending inital register request");
             let resp = client.matrix_auth().register(register_request).await;
 
+            debug!("what the flow: {:#?}", resp);
+            return;
             //Holy error! This is what we should expect, effectively means that the user needs to do another step of auth,
             //like a recaptcha, shared token, or read terms and conditions
             if let Err(matrix_sdk::Error::Http(HttpError::Api(FromHttpResponseError::Server(
                 RumaApiError::Uiaa(info),
             )))) = resp
             {
+                // todo!("complex reg");
                 let chosen_flow: VecDeque<AuthType> = {
                     if !info.flows.is_empty() {
                         let shortest_flow = info
@@ -79,15 +85,15 @@ where
                         chosen_flow,
                         common_user_data: auth_data,
                     });
+                callback();
             } else if resp.is_ok() {
                 trace!("Inital register auth got accepted");
                 *returned_state_machine.write() = Some(AuthenticationState::Authorized);
+                callback();
             } else if let Err(err) = resp {
                 error!("Inital register got unexpected api error: {err}");
                 *error_string.write() = err.to_string();
             }
-
-            callback();
         });
     };
 

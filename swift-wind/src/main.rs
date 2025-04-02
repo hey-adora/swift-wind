@@ -64,7 +64,7 @@ fn main() {
 
     info!("started!");
 
-    launch(app);
+    launch_with_props(app, "Swift Wind", (1280.0, 720.0));
 }
 
 fn app() -> Element {

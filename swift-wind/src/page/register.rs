@@ -1,8 +1,11 @@
 use dioxus_router::prelude::navigator;
 use freya::dioxus_core;
 use freya::prelude::*;
+use tracing::debug;
 use tracing::trace;
 
+use crate::CLIENT;
+use crate::MatrixClientState;
 use crate::components::additional_authorization::AdditonalAuthHandler;
 use crate::components::additional_authorization::AuthenticationState;
 use crate::hook::CommonUserAuthData;
@@ -20,7 +23,19 @@ pub fn Register() -> Element {
     let mut form = use_signal(LoginForm::default);
     let navigator = navigator();
 
-    let (error_string, mut run_matrix_register, state_machine) = use_matrix_register(move || {});
+    use_effect(move || {
+        let MatrixClientState::Connected(client) = CLIENT() else {
+            return;
+        };
+        spawn(async move {
+            let types = client.matrix_auth().get_login_types().await;
+            debug!("TYPES: {:#?}", types);
+        });
+    });
+
+    let (error_string, mut run_matrix_register, state_machine) = use_matrix_register(move || {
+        trace!("wwowza yowza mowza");
+    });
 
     let on_register = move |_| {
         let auth_data = CommonUserAuthData {
@@ -42,7 +57,7 @@ pub fn Register() -> Element {
 
                 match auth_state{
                     AuthenticationState::Authorized { .. } => {
-                        navigator.push("main_interface");
+                        // navigator.push("main_interface");
                         rsx!{label { "Account created, loading main interface" }}
                     },
                     AuthenticationState::AdditionalAuthRequired { chosen_flow:_, common_user_data } => {

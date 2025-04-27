@@ -220,7 +220,7 @@ pub mod matrix_engine {
     use matrix_sdk::{Client, reqwest::Url};
     use thiserror::Error;
     use tokio::{
-        select,
+        select, spawn,
         sync::{mpsc, oneshot},
     };
     use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -238,145 +238,157 @@ pub mod matrix_engine {
     }
 
     #[derive(Clone, Debug)]
-    pub struct EngineTx {
-        //pub add_account_tx: mpsc::UnboundedSender<(oneshot::Sender<bool>, ReqAccount)>,
+    pub struct EngineExternalTx {
         pub connect_tx: mpsc::UnboundedSender<(
             oneshot::Sender<Result<login_username::Res, login_username::HandleErr>>,
             login_username::Req,
         )>,
-        pub shutdown: CancellationToken,
-        //pub login_tx: mpsc::UnboundedSender<bool>,
+        pub shutdown_tx: mpsc::Sender<oneshot::Sender<()>>,
     }
 
     #[derive(Debug)]
-    pub struct EngineRx {
-        //pub add_account_rx: mpsc::UnboundedReceiver<(oneshot::Sender<bool>, ReqAccount)>,
+    pub struct EngineExternalRx {
         pub connect_rx: mpsc::UnboundedReceiver<(
             oneshot::Sender<Result<login_username::Res, login_username::HandleErr>>,
             login_username::Req,
         )>,
-        pub shutdown: CancellationToken,
-        //pub login_rx: mpsc::UnboundedReceiver<bool>,
+        pub shutdown_rx: mpsc::Receiver<oneshot::Sender<()>>,
     }
 
-    // #[derive(Clone, Debug)]
-    // pub struct DriverTx {
-    //     pub connect_tx: mpsc::UnboundedSender<(oneshot::Sender<bool>, MatrixConnect)>,
-    //     pub login_tx: mpsc::UnboundedSender<(oneshot::Sender<bool>, MatrixUsernamePasswordLogin)>,
-    // }
+    #[derive(Clone, Debug)]
+    pub struct EngineInternalTx {
+        pub connect_tx: mpsc::UnboundedSender<(
+            oneshot::Sender<Result<login_username::Res, login_username::HandleErr>>,
+            login_username::Res,
+        )>,
+        pub shutdown_tx: mpsc::Sender<oneshot::Sender<()>>,
+    }
 
-    // #[derive(Debug)]
-    // pub struct DriverRx {
-    //     pub connect_rx: mpsc::UnboundedReceiver<(oneshot::Sender<bool>, MatrixConnect)>,
-    //     pub login_rx: mpsc::UnboundedReceiver<(oneshot::Sender<bool>, MatrixUsernamePasswordLogin)>,
-    // }
+    #[derive(Debug)]
+    pub struct EngineInternalRx {
+        pub connect_rx: mpsc::UnboundedReceiver<(
+            oneshot::Sender<Result<login_username::Res, login_username::HandleErr>>,
+            login_username::Res,
+        )>,
 
-    pub fn create_engine_channel(cancelation_token: CancellationToken) -> (EngineTx, EngineRx) {
-        //let (add_account_res_tx, add_account_res_rx) = mpsc::unbounded_channel();
-        let (connect_res_tx, connect_res_rx) = mpsc::unbounded_channel();
-        //let (login_res_tx, login_res_rx) = mpsc::unbounded_channel();
+        pub shutdown_rx: mpsc::Receiver<oneshot::Sender<()>>,
+    }
 
-        let tx = EngineTx {
-            //add_account_tx: add_account_res_tx,
-            //login_tx: login_res_tx,
-            connect_tx: connect_res_tx,
-            shutdown: cancelation_token.clone(),
+    pub fn create_engine_external_channel() -> (EngineExternalTx, EngineExternalRx) {
+        let (connect_tx, connect_rx) = mpsc::unbounded_channel();
+        let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
+
+        let tx = EngineExternalTx {
+            connect_tx,
+            shutdown_tx,
         };
-        let rx = EngineRx {
-            //add_account_rx: add_account_res_rx,
-            //login_rx: login_res_rx,
-            connect_rx: connect_res_rx,
-            shutdown: cancelation_token,
+        let rx = EngineExternalRx {
+            connect_rx,
+            shutdown_rx,
         };
         (tx, rx)
     }
 
-    // pub fn create_driver_channel() -> (DriverTx, DriverRx) {
-    //     let (connect_tx, connect_rx) = mpsc::unbounded_channel();
-    //     let (login_tx, login_rx) = mpsc::unbounded_channel();
+    pub fn create_engine_internal_channel() -> (EngineInternalTx, EngineInternalRx) {
+        let (connect_tx, connect_rx) = mpsc::unbounded_channel();
+        let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
-    //     let tx = DriverTx {
-    //         connect_tx,
-    //         login_tx,
-    //     };
+        let tx = EngineInternalTx {
+            connect_tx,
+            shutdown_tx,
+        };
+        let rx = EngineInternalRx {
+            connect_rx,
+            shutdown_rx,
+        };
+        (tx, rx)
+    }
 
-    //     let rx = DriverRx {
-    //         connect_rx,
-    //         login_rx,
-    //     };
-
-    //     (tx, rx)
-    // }
-
-    pub async fn run(engine_tx: EngineTx, mut engine_rx: EngineRx) {
+    pub async fn run() -> (EngineExternalTx, impl Future<Output = ()>) {
+        let (engine_external_tx, mut engine_external_rx) = create_engine_external_channel();
+        let (engine_internal_tx, mut engine_internal_rx) = create_engine_internal_channel();
         let tracker = TaskTracker::new();
-        // let (add_account_res_tx, add_account_res_rx) = mpsc::unbounded_channel();
-        // let (connect_res_tx, connect_res_rx) = mpsc::unbounded_channel();
-        // let (login_res_tx, login_res_rx) = mpsc::unbounded_channel();
-        //let (kernel_tx, mut kernel_rx) = create_kernel_channel();
-        // let client = Client::builder()
-        //     .homeserver_url(url)
-        //     .handle_refresh_tokens()
-        //     .build()
-        //     .await
-        //     .unwrap();
-        let mut client: Option<Client> = None;
 
-        //let mut accounts = HashMap::<String, Box<dyn Driver>>::new();
-        //let (driver_tx, driver_rx) = create_driver_channel();
-        //let driver_taks = run_driver(kernel_tx, driver_rx, MatrixDriver::default());
+        //let mut shutdown_awaiters: Vec<oneshot::Sender<()>> = Vec::new();
 
-        // let mut add_account_fn = async move |(res, url, username, password): (
-        //     oneshot::Sender<bool>,
-        //     String,
-        //     String,
-        //     String,
-        // )| {
-        //     accounts.insert("k".to_string(), "k5".to_string());
-        //     tracing::debug!("adding account!");
-        // };
+        let external_handler_event_loop = spawn({
+            let tracker = tracker.clone();
+            async move {
+                loop {
+                    select! {
+                        // connect handlers
+                        req = engine_external_rx.connect_rx.recv() => {
+                            let Some((res, req)) = req else {
+                                return;
+                            };
+                            let client = client.clone();
+                            tracker.spawn(async move {
+                                let result = login_username::handle(client, req).await;
+                                let _ = res.send(result);
+                            });
 
-        // let connect_fn = async move |res| {
-        //     accounts.insert("k".to_string(), "k5".to_string());
-        //     tracing::debug!("connected!");
-        // };
+                        },
 
-        // let login_fn = async |res| {
-        //     tracing::debug!("logged in!");
-        // };
+                        // shutdown handlers
+                        req = engine_external_rx.shutdown_rx.recv() => {
+                            let Some(res) = req else {
+                                return;
+                            };
+                            //shutdown_awaiters.push(res);
+                            //tracker.close();
+                            engine_internal_tx.shutdown_tx.send(res).await.unwrap();
+                            break;
+                        }
 
-        loop {
-            select! {
-                // req = kernel_rx.add_account_rx.recv() => {
-                //     let Some((res, req)) = req else {
-                //         return;
-                //     };
-                //     add_account(tracker);
-                // }
-                req = engine_rx.connect_rx.recv() => {
-                    let Some((res, req)) = req else {
-                        return;
-                    };
-                    tracker.spawn(login_username::handle(client.clone(), req, res));
-                    //let err = res.send(result);
-                    // if res.send(result).is_err() {
-                    //     error!("failed to send connection result, channel closed");
-                    // }
-                    //tracker.spawn(connect_fn(connected_res));
-                },
-                _ = tracker.wait() => {
-                    break;
+                        // //
+                        // _ = tracker.wait() => {
+                        //     break;
+                        // }
+
+                    }
                 }
-                // login_res = kernel_rx.login_res_rx.recv() => {
-                //     tracker.spawn(login_fn(login_res));
-                // }
             }
-        }
+        });
 
-        //tracker.close();
-        //tracker.wait().await;
-        //let (login_res_tx, login_res_rx) = mpsc::unbounded_channel::<Response>();
-        //login_res_rx.recv()
+        //let a = external_handler_event_loop.;
+
+        let internal_handler_event_loop = spawn(async move {
+            let mut client: Option<Client> = None;
+            let mut shutdown_signal: Option<oneshot::Sender<()>> = None;
+
+            loop {
+                select! {
+                    res = engine_internal_rx.connect_rx.recv() => {
+
+                    }
+                    res = engine_internal_rx.shutdown_rx.recv() => {
+                        let res = res.unwrap();
+                        shutdown_signal = Some(res);
+                        tracker.close();
+                    }
+                    //
+                    _ = tracker.wait() => {
+                        break;
+                    }
+
+                }
+            }
+
+            if let Some(signal) = shutdown_signal {
+                let _ = signal.send(());
+            }
+        });
+
+        let join_fn = async move {
+            external_handler_event_loop.await.unwrap();
+            internal_handler_event_loop.await.unwrap();
+        };
+
+        (engine_external_tx, join_fn)
+
+        // for awaiter in shutdown_awaiters {
+        //     let _ = awaiter.send(());
+        // }
     }
 
     #[cfg(test)]
@@ -386,12 +398,12 @@ pub mod matrix_engine {
         use test_log::test;
         use tokio_util::sync::CancellationToken;
 
-        use crate::matrix_engine::{self, create_engine_channel};
+        use crate::matrix_engine::{self, create_engine_external_channel};
 
         #[test(tokio::test)]
         async fn connect_succ() {
-            let cancelation_token = CancellationToken::new();
-            let (engine_tx, engine_rx) = create_engine_channel(cancelation_token);
+            //let cancelation_token = CancellationToken::new();
+            let (engine_tx, engine_rx) = create_engine_external_channel();
             matrix_engine::run(engine_tx, engine_rx).await;
             // let mut client: Option<Client> = None;
 
@@ -573,8 +585,8 @@ pub mod matrix_engine {
         pub async fn handle(
             client: Option<Client>,
             req: Req,
-            res: oneshot::Sender<Result<Res, HandleErr>>,
-        ) {
+            // res: oneshot::Sender<Result<Res, HandleErr>>,
+        ) -> Result<Res, HandleErr> {
             let client = client.ok_or(HandleErr::ClientIsNotConnected)?;
             // let new_client = Client::builder()
             //     .homeserver_url(&req.server_url)

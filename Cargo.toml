@@ -28,3 +28,7 @@ anyhow = { version = "1.0.97" }
 # wasmer = "5.0.4"
 url = "2.5.4"
 rand = "0.9.1"
+bevy = "0.16.0"
+crossbeam-channel = "0.5.15"
+async-channel = "2.3.1"
+reqwest = "0.12.15"

@@ -14,3 +14,23 @@ matrix-sdk = { workspace = true }
 ruma = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+simple_logger = { workspace = true }
+log = { workspace = true }
+surrealdb = { workspace = true }
+futures = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+# wasmer = { workspace = true }
+url = { workspace = true }
+rand = { workspace = true }
+bevy = { workspace = true }
+crossbeam-channel = { workspace = true }
+async-channel = { workspace = true }
+reqwest = { workspace = true }
+
+[dev-dependencies]
+test-log = { workspace = true }
+freya-testing = { workspace = true }

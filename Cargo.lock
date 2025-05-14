@@ -9471,6 +9471,8 @@ dependencies = [
  "rand 0.9.1",
  "reqwest",
  "ruma",
+ "serde",
+ "serde_json",
  "simple_logger",
  "surrealdb",
  "test-log",

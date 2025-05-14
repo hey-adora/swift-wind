@@ -30,6 +30,8 @@ bevy = { workspace = true }
 crossbeam-channel = { workspace = true }
 async-channel = { workspace = true }
 reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 test-log = { workspace = true }
